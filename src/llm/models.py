@@ -4,10 +4,10 @@ from langchain_anthropic import ChatAnthropic
 from langchain_deepseek import ChatDeepSeek
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 from langchain_ollama import ChatOllama
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from typing import Tuple, List
 from pathlib import Path
 
@@ -16,6 +16,7 @@ class ModelProvider(str, Enum):
     """Enum for supported LLM providers"""
 
     ANTHROPIC = "Anthropic"
+    AZURE_OPENAI = "AzureOpenAI"
     DEEPSEEK = "DeepSeek"
     GEMINI = "Gemini"
     GROQ = "Groq"
@@ -116,41 +117,102 @@ def get_models_list():
     ]
 
 
-def get_model(model_name: str, model_provider: ModelProvider) -> ChatOpenAI | ChatGroq | ChatOllama | None:
+def get_ollama_models_list():
+    """Get the list of Ollama models for API responses."""
+    return [
+        {
+            "display_name": model.display_name,
+            "model_name": model.model_name,
+            "provider": model.provider.value,
+        }
+        for model in OLLAMA_MODELS
+    ]
+
+
+def get_model(
+    model_name: str, model_provider: ModelProvider
+) -> (
+    ChatOpenAI
+    | ChatGroq
+    | ChatOllama
+    | ChatAnthropic
+    | ChatDeepSeek
+    | ChatGoogleGenerativeAI
+    | AzureChatOpenAI
+    | None
+):
     if model_provider == ModelProvider.GROQ:
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
             # Print error to console
-            print(f"API Key Error: Please make sure GROQ_API_KEY is set in your .env file.")
-            raise ValueError("Groq API key not found.  Please make sure GROQ_API_KEY is set in your .env file.")
-        return ChatGroq(model=model_name, api_key=api_key)
+            print(
+                f"API Key Error: Please make sure GROQ_API_KEY is set in your .env file."
+            )
+            raise ValueError(
+                "Groq API key not found.  Please make sure GROQ_API_KEY is set in your .env file."
+            )
+        return ChatGroq(model=model_name, api_key=SecretStr(api_key))
+    elif model_provider == ModelProvider.AZURE_OPENAI:
+        api_key = os.getenv("AZURE_OPENAI_KEY")
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION")
+        if not api_key or not endpoint or not api_version:
+            print(
+                f"API Key Error: Please make sure AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_VERSION are set in your .env file."
+            )
+            raise ValueError(
+                "Azure OpenAI credentials not found. Please make sure AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_VERSION are set in your .env file."
+            )
+
+        return AzureChatOpenAI(
+            azure_deployment=model_name,
+            api_key=SecretStr(api_key),
+            azure_endpoint=endpoint,
+            api_version=api_version,
+        )
     elif model_provider == ModelProvider.OPENAI:
         # Get and validate API key
         api_key = os.getenv("OPENAI_API_KEY")
         base_url = os.getenv("OPENAI_API_BASE")
         if not api_key:
             # Print error to console
-            print(f"API Key Error: Please make sure OPENAI_API_KEY is set in your .env file.")
-            raise ValueError("OpenAI API key not found.  Please make sure OPENAI_API_KEY is set in your .env file.")
-        return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
+            print(
+                f"API Key Error: Please make sure OPENAI_API_KEY is set in your .env file."
+            )
+            raise ValueError(
+                "OpenAI API key not found.  Please make sure OPENAI_API_KEY is set in your .env file."
+            )
+        return ChatOpenAI(model=model_name, api_key=SecretStr(api_key), base_url=base_url)
     elif model_provider == ModelProvider.ANTHROPIC:
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            print(f"API Key Error: Please make sure ANTHROPIC_API_KEY is set in your .env file.")
-            raise ValueError("Anthropic API key not found.  Please make sure ANTHROPIC_API_KEY is set in your .env file.")
-        return ChatAnthropic(model=model_name, api_key=api_key)
+            print(
+                f"API Key Error: Please make sure ANTHROPIC_API_KEY is set in your .env file."
+            )
+            raise ValueError(
+                "Anthropic API key not found.  Please make sure ANTHROPIC_API_KEY is set in your .env file."
+            )
+        return ChatAnthropic(model=model_name, api_key=SecretStr(api_key))
     elif model_provider == ModelProvider.DEEPSEEK:
         api_key = os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
-            print(f"API Key Error: Please make sure DEEPSEEK_API_KEY is set in your .env file.")
-            raise ValueError("DeepSeek API key not found.  Please make sure DEEPSEEK_API_KEY is set in your .env file.")
-        return ChatDeepSeek(model=model_name, api_key=api_key)
+            print(
+                f"API Key Error: Please make sure DEEPSEEK_API_KEY is set in your .env file."
+            )
+            raise ValueError(
+                "DeepSeek API key not found.  Please make sure DEEPSEEK_API_KEY is set in your .env file."
+            )
+        return ChatDeepSeek(model=model_name, api_key=SecretStr(api_key))
     elif model_provider == ModelProvider.GEMINI:
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
-            print(f"API Key Error: Please make sure GOOGLE_API_KEY is set in your .env file.")
-            raise ValueError("Google API key not found.  Please make sure GOOGLE_API_KEY is set in your .env file.")
-        return ChatGoogleGenerativeAI(model=model_name, api_key=api_key)
+            print(
+                f"API Key Error: Please make sure GOOGLE_API_KEY is set in your .env file."
+            )
+            raise ValueError(
+                "Google API key not found.  Please make sure GOOGLE_API_KEY is set in your .env file."
+            )
+        return ChatGoogleGenerativeAI(model=model_name, api_key=SecretStr(api_key))
     elif model_provider == ModelProvider.OLLAMA:
         # For Ollama, we use a base URL instead of an API key
         # Check if OLLAMA_HOST is set (for Docker on macOS)

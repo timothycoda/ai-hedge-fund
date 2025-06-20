@@ -1,0 +1,21 @@
+# Use a Node.js base image
+FROM node:20-alpine
+
+# Set the working directory
+WORKDIR /app/frontend
+
+# Copy package.json and package-lock.json. The context is the root of the project.
+COPY app/frontend/package.json ./
+COPY app/frontend/package-lock.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the frontend application code
+COPY app/frontend/ ./
+
+# Expose the port the app runs on
+EXPOSE 5173
+
+# Start the development server and ensure it's accessible from outside the container
+CMD ["npm", "run", "dev", "--", "--host"] 

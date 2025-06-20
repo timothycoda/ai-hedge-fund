@@ -1,102 +1,44 @@
+version: '3.8'
+
 services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    image: ai-hedge-fund-frontend:latest
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://backend:8000
+    depends_on:
+      - backend
+    volumes:
+      - ../app/frontend:/app/frontend
+      - /app/frontend/node_modules
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    image: ai-hedge-fund-backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../:/app
+    environment:
+      - ENV_FILE=../.env
+    depends_on:
+      - ollama
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama
     environment:
       - OLLAMA_HOST=0.0.0.0
-      # Apple Silicon GPU acceleration
-      - METAL_DEVICE=on
-      - METAL_DEVICE_INDEX=0
     volumes:
       - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
-    restart: unless-stopped
-
-  hedge-fund:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: ai-hedge-fund
-    depends_on:
-      - ollama
-    volumes:
-      - ../.env:/app/.env
-    command: python src/main.py --ticker AAPL,MSFT,NVDA
-    environment:
-      - PYTHONUNBUFFERED=1
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - PYTHONPATH=/app
-    tty: true
-    stdin_open: true
-
-  hedge-fund-reasoning:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: ai-hedge-fund
-    depends_on:
-      - ollama
-    volumes:
-      - ../.env:/app/.env
-    command: python src/main.py --ticker AAPL,MSFT,NVDA --show-reasoning
-    environment:
-      - PYTHONUNBUFFERED=1
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - PYTHONPATH=/app
-    tty: true
-    stdin_open: true
-
-  hedge-fund-ollama:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: ai-hedge-fund
-    depends_on:
-      - ollama
-    volumes:
-      - ../.env:/app/.env
-    command: python src/main.py --ticker AAPL,MSFT,NVDA --ollama
-    environment:
-      - PYTHONUNBUFFERED=1
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - PYTHONPATH=/app
-    tty: true
-    stdin_open: true
-
-  backtester:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: ai-hedge-fund
-    depends_on:
-      - ollama
-    volumes:
-      - ../.env:/app/.env
-    command: python src/backtester.py --ticker AAPL,MSFT,NVDA
-    environment:
-      - PYTHONUNBUFFERED=1
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - PYTHONPATH=/app
-    tty: true
-    stdin_open: true
-
-  backtester-ollama:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    image: ai-hedge-fund
-    depends_on:
-      - ollama
-    volumes:
-      - ../.env:/app/.env
-    command: python src/backtester.py --ticker AAPL,MSFT,NVDA --ollama
-    environment:
-      - PYTHONUNBUFFERED=1
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - PYTHONPATH=/app
-    tty: true
-    stdin_open: true
 
 volumes:
-  ollama_data: 
+  ollama_data: {}
